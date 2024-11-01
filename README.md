@@ -1,4 +1,5 @@
 # Screen-Recoder-
+https://addons.mozilla.org/en-US/firefox/addon/screen-recorder-pro/<br>
 Screen Recorder Extension<br>
 <strong>A powerful and user-friendly browser extension for capturing screen content with professional features and a clean interface.</strong><br>
 Features
