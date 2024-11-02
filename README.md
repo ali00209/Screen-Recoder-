@@ -1,88 +1,69 @@
-# Screen-Recoder-
-https://addons.mozilla.org/en-US/firefox/addon/screen-recorder-pro/<br>
-Screen Recorder Extension<br>
-<strong>A powerful and user-friendly browser extension for capturing screen content with professional features and a clean interface.</strong><br>
-Features
-<ul>
-<li><strong>High Quality Recording</strong>
-<ul>
-<li>Support for multiple resolutions up to 4K (3840x2160)</li>
-</ul>
-</li>
-<li><strong>Flexible Video Settings</strong>
-<ul>
-<li>Multiple resolution options from 360p to 4K</li>
-<li>Choice of video codecs (<code>WebM</code>, <code>VP8</code>)</li>
-<li>Configurable start delay (0-10 seconds)</li>
-</ul>
-</li>
-<li><strong>Professional Recording Tools</strong>
-<ul>
-<li>Live preview during recording</li>
-<li>Real-time recording timer</li>
-<li>Status indicators</li>
-<li>Countdown timer for delayed starts</li>
-</ul>
-</li>
-<li><strong>User-Friendly Interface</strong>
-<ul>
-<li>Dark/Light theme support</li>
-<li>Minimal mode for distraction-free recording</li>
-<li>Intuitive controls</li>
-<li>Live preview and playback</li>
-<li>Tooltips for easy navigation</li>
-</ul>
-</li>
-</ul>
-Technical Specifications
-<ul>
-<li><strong>Video Features</strong>
-<ul>
-<li>High-quality audio capture with noise suppression</li>
-<li>60 FPS video capture</li>
-<li>Cursor capture support</li>
-<li>Optimized video encoding</li>
-</ul>
-</li>
-<li><strong>Storage & Settings</strong>
-<ul>
-<li>Automatic bitrate optimization based on resolution</li>
-<li>Built-in video player for instant playback</li>
-<li>Save recordings directly to your computer</li>
-<li>Persistent settings storage</li>
-</ul>
-</li>
-</ul>
-Privacy & Permissions
-<blockquote>
-The extension only requires necessary permissions for screen recording functionality:
-<ul>
-<li>Screen capture access</li>
-<li>Download capability for saving recordings</li>
-<li>Storage for saving user preferences</li>
-</ul>
-</blockquote>
-Browser Compatibility
-<ul>
-<li>Firefox <em>79.0 or later</em></li>
-<li>Supports modern web standards and <abbr title="Application Programming Interface">API</abbr>s</li>
-</ul>
-Installation & Usage
-<ol>
-<li>Install directly from the browser's extension store</li>
-<li>Click the extension icon to open the recorder</li>
-<li>Configure your desired recording settings</li>
-<li>Click <code>"Start Recording"</code> and select the screen area to capture</li>
-<li>Use the control panel to manage your recording</li>
-<li>Save your recording when finished</li>
-</ol>
-Perfect For
-<ul>
-<li>Creating tutorials</li>
-<li>Recording presentations</li>
-<li>Capturing gameplay</li>
-<li>Educational content</li>
-<li>Technical demonstrations</li>
-<li>Bug reporting</li>
-</ul>
-<em>For more information and updates, visit our <a href="https://github.com/ali00209/Screen-Recoder-">GitHub repository</a>.</em>
+# Screen Recorder
+
+![Screen Recorder](https://github.com/user-attachments/assets/7c444f55-feda-48d5-94cd-f9de4047d8c0)
+
+[![Download from Firefox Add-ons](https://img.shields.io/badge/Firefox-Download-orange?logo=firefox)](https://addons.mozilla.org/en-US/firefox/addon/screen-recorder-pro/)
+
+**A powerful and user-friendly browser extension for capturing screen content, packed with professional features and a clean, intuitive interface.**
+
+---
+
+## Features
+
+### High-Quality Recording
+- Support for multiple resolutions up to **4K (3840x2160)**.
+
+### Flexible Video Settings
+- Resolution options: from **360p to 4K**.
+- Choice of video codecs: **WebM, VP8**.
+- Configurable start delay (0-10 seconds).
+
+### Professional Recording Tools
+- **Live preview** during recording.
+- Real-time **recording timer** and status indicators.
+- **Countdown timer** for delayed starts.
+
+### User-Friendly Interface
+- **Dark/Light theme** support.
+- **Minimal mode** for distraction-free recording.
+- Live preview, playback, and tooltips for easy navigation.
+
+## Technical Specifications
+
+### Video Features
+- **High-quality audio** capture with noise suppression.
+- **60 FPS** video capture.
+- Cursor capture support.
+- Optimized video encoding.
+
+### Storage & Settings
+- Automatic **bitrate optimization** based on resolution.
+- Built-in **video player** for instant playback.
+- Save recordings directly to your computer.
+- Persistent settings storage.
+
+## Privacy & Permissions
+This extension requires only the necessary permissions for screen recording:
+- Screen capture access.
+- Download capability for saving recordings.
+- Storage for saving user preferences.
+
+## Browser Compatibility
+- Compatible with **Firefox 79.0 or later**.
+- Supports modern web standards and **APIs**.
+
+## Installation & Usage
+
+1. Install directly from the [Firefox Add-ons store](https://addons.mozilla.org/en-US/firefox/addon/screen-recorder-pro/).
+2. Click the extension icon to open the recorder.
+3. Configure your recording settings.
+4. Click **"Start Recording"** and select the screen area to capture.
+5. Use the control panel to manage recording.
+6. Save your recording when finished.
+
+## Perfect For
+- Creating tutorials and educational content.
+- Recording presentations or gameplay.
+- Technical demonstrations and bug reporting.
+
+_For more information and updates, visit the [GitHub repository](https://github.com/ali00209/Screen-Recoder-)._
