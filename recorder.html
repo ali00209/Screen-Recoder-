@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <title>Screen Recorder</title>
+  <link rel="stylesheet" href="styles.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div class="app-container">
+    <div class="sidebar">
+      <div class="logo-container">
+        <div class="logo">
+          <svg class="logo-icon" width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22Z" stroke="currentColor" stroke-width="2"/>
+            <circle cx="12" cy="12" r="4" fill="currentColor"/>
+          </svg>
+          <span>Screen Recorder</span>
+        </div>
+        <button id="themeToggle" class="theme-toggle" aria-label="Toggle theme" data-tooltip="Toggle dark mode">
+          <svg class="sun-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+            <circle cx="12" cy="12" r="5"/>
+            <line x1="12" y1="1" x2="12" y2="3"/>
+            <line x1="12" y1="21" x2="12" y2="23"/>
+            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/>
+            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+            <line x1="1" y1="12" x2="3" y2="12"/>
+            <line x1="21" y1="12" x2="23" y2="12"/>
+            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/>
+            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+          </svg>
+          <svg class="moon-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+          </svg>
+        </button>
+      </div>
+
+      <div class="settings-panel">
+        <div class="settings-header">
+          <h3>Recording Settings</h3>
+        </div>
+
+        <div class="settings-content">
+          <div class="setting-group">
+            <label for="resolution">Resolution</label>
+            <div class="select-wrapper">
+              <select id="resolution" class="setting-select">
+                <option value="3840x2160">4K (3840x2160)</option>
+                <option value="2560x1440">2K (2560x1440)</option>
+                <option value="1920x1080" selected>Full HD (1920x1080)</option>
+                <option value="1280x720">HD (1280x720)</option>
+                <option value="854x480">480p (854x480)</option>
+                <option value="640x360">360p (640x360)</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="setting-group">
+            <label for="codec">Video Codec</label>
+            <div class="select-wrapper">
+              <select id="codec" class="setting-select">
+                <option value="video/webm">WebM Default</option>
+                <option value="video/webm;codecs=vp8">VP8</option>
+                <option value="video/webm;codecs=vp8.0">VP8.0</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="setting-group">
+            <label for="delay">Start Delay</label>
+            <div class="select-wrapper">
+              <select id="delay" class="setting-select">
+                <option value="0">No Delay</option>
+                <option value="3">3 Seconds</option>
+                <option value="5">5 Seconds</option>
+                <option value="10">10 Seconds</option>
+              </select>
+            </div>
+          </div>
+
+          <button id="saveSettingsBtn" class="btn-secondary save-settings-btn" data-tooltip="Save current settings">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
+              <polyline points="17 21 17 13 7 13 7 21"/>
+            </svg>
+            Save Settings
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="main-content">
+      <div class="minimal-header">
+        <button id="backBtn" class="back-arrow" data-tooltip="Toggle minimal mode">
+          <svg class="arrow-icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+            <path d="M19 12H5"/>
+            <path class="arrow-head" d="M12 19l-7-7 7-7"/>
+          </svg>
+        </button>
+      </div>
+
+      <div class="top-bar">
+        <div class="status-timer-pill">
+          <div class="timer-section">
+            <svg class="timer-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <circle cx="12" cy="12" r="10"/>
+              <polyline points="12 6 12 12 16 14"/>
+            </svg>
+            <span id="recordingTimer">00:00:00</span>
+          </div>
+          <div class="status-section">
+            <span id="statusIndicator" class="status-dot"></span>
+            <span id="statusText">Ready</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="preview-container">
+        <div class="video-aspect-container">
+          <video id="preview" autoplay muted></video>
+        </div>
+        <div class="player-container" style="display: none;">
+          <div class="video-aspect-container">
+            <video id="player" controls>
+              Your browser doesn't support video playback.
+            </video>
+          </div>
+        </div>
+      </div>
+
+      <div class="control-panel">
+        <div class="control-buttons">
+          <button id="startBtn" class="btn-primary" data-tooltip="Start screen recording">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <circle cx="12" cy="12" r="10"/>
+              <circle cx="12" cy="12" r="3" fill="currentColor"/>
+            </svg>
+            Start Recording
+          </button>
+          <button id="stopBtn" class="btn-danger" disabled data-tooltip="Stop current recording">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <rect x="6" y="6" width="12" height="12"/>
+            </svg>
+            Stop
+          </button>
+          <button id="downloadBtn" class="btn-secondary" disabled data-tooltip="Save recording to file">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+              <polyline points="7 10 12 15 17 10"/>
+              <line x1="12" y1="15" x2="12" y2="3"/>
+            </svg>
+            Save Recording
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <script src="recorder.js"></script>
+</body>
+</html> 
