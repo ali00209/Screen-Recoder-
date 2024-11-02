@@ -175,18 +175,16 @@ function stopRecording() {
       }
     }
     
-    // Always reset UI state
-    elements.startBtn.disabled = false;
-    elements.stopBtn.disabled = true;
-    elements.resolution.disabled = false;
-    elements.codec.disabled = false;
-    elements.delay.disabled = false;
+    // Always reset UI state and enable save button
+    resetUIState();
+    elements.saveSettingsBtn.disabled = false;
 
   } catch (error) {
     console.error('Stop error:', error);
     updateStatus('ready', 'Recording stopped with errors');
     cleanup();
     resetUIState();
+    elements.saveSettingsBtn.disabled = false;
   }
 }
 
@@ -203,18 +201,16 @@ async function startRecording() {
     
     try {
       const resolution = elements.resolution.value.split('x').map(Number);
+      // Simplified options - Firefox only supports basic video/audio constraints
       stream = await navigator.mediaDevices.getDisplayMedia({
         video: {
           frameRate: 60,
-          width: resolution[0],
-          height: resolution[1],
-          cursor: 'always'
+          width: { ideal: resolution[0] },
+          height: { ideal: resolution[1] }
         },
         audio: {
           echoCancellation: true,
-          noiseSuppression: true,
-          sampleRate: 48000,
-          channelCount: 2
+          noiseSuppression: true
         }
       });
 
@@ -309,15 +305,12 @@ async function startRecording() {
       throw new Error('Some tracks are inactive before recording start');
     }
 
-    const options = { mimeType: elements.codec.value };
-    if (!MediaRecorder.isTypeSupported(options.mimeType)) {
-      options.mimeType = 'video/webm';
-    }
-
+    // Update MediaRecorder options to use only supported features
+    const options = { mimeType: 'video/webm' }; // Firefox supports WebM by default
+    
     mediaRecorder = new MediaRecorder(stream, {
       mimeType: options.mimeType,
-      videoBitsPerSecond: DEFAULT_BITRATES[elements.resolution.value] || 16000000,
-      audioBitsPerSecond: 256000
+      bitsPerSecond: DEFAULT_BITRATES[elements.resolution.value] || 16000000
     });
 
     mediaRecorder.ondataavailable = e => {
@@ -408,6 +401,7 @@ async function startRecording() {
     
     cleanup();
     resetUIState();
+    elements.saveSettingsBtn.disabled = false;
   }
 }
 
