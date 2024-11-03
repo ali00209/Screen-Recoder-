@@ -1,69 +1,82 @@
-# Screen Recorder
+# Screen Recorder v1.2
 
 ![Screen Recorder](https://github.com/user-attachments/assets/7c444f55-feda-48d5-94cd-f9de4047d8c0)
 
 [![Download from Firefox Add-ons](https://img.shields.io/badge/Firefox-Download-orange?logo=firefox)](https://addons.mozilla.org/en-US/firefox/addon/screen-recorder-pro/)
 
-**A powerful and user-friendly browser extension for capturing screen content, packed with professional features and a clean, intuitive interface.**
+A Firefox browser extension for high-quality screen recording with professional features and an intuitive interface.
 
----
-
-## Features
-
-### High-Quality Recording
-- Support for multiple resolutions up to **4K (3840x2160)**.
-
-### Flexible Video Settings
-- Resolution options: from **360p to 4K**.
-- Choice of video codecs: **WebM, VP8**.
-- Configurable start delay (0-10 seconds).
-
-### Professional Recording Tools
-- **Live preview** during recording.
-- Real-time **recording timer** and status indicators.
-- **Countdown timer** for delayed starts.
-
-### User-Friendly Interface
-- **Dark/Light theme** support.
-- **Minimal mode** for distraction-free recording.
-- Live preview, playback, and tooltips for easy navigation.
+## Core Features
+- Screen recording with audio support
+- Resolution selection up to 4K (3840x2160)
+- WebM format recording
+- Recording history with playback
+- Dark/Light theme support
+- Minimal mode interface
+- Countdown timer option
 
 ## Technical Specifications
 
-### Video Features
-- **High-quality audio** capture with noise suppression.
-- **60 FPS** video capture.
-- Cursor capture support.
-- Optimized video encoding.
+### Video & Audio
+- Resolution presets from 360p to 4K
+- WebM format with optimized encoding
+- High-quality audio capture
+- Screen capture with cursor support
 
-### Storage & Settings
-- Automatic **bitrate optimization** based on resolution.
-- Built-in **video player** for instant playback.
-- Save recordings directly to your computer.
-- Persistent settings storage.
+### Storage & Management
+- Local storage for settings
+- IndexedDB for recording history
+- Unlimited storage for large recordings
+- Automatic file naming with timestamps
+- Custom filename support
+- Recording history management
 
-## Privacy & Permissions
-This extension requires only the necessary permissions for screen recording:
-- Screen capture access.
-- Download capability for saving recordings.
-- Storage for saving user preferences.
+### UI/UX Features
+- Responsive design for all window sizes
+- Dark/Light theme options
+- Minimal mode for distraction-free recording
+- Status indicators and recording timer
+- Smooth animations and transitions
+- Improved history panel with recording details
+
+## Settings & Customization
+### Resolution Options
+- 4K (3840x2160)
+- 2K (2560x1440)
+- Full HD (1920x1080)
+- HD (1280x720)
+- 480p (854x480)
+- 360p (640x360)
+
+### Recording Options
+- Start delay: 0, 3, 5, or 10 seconds
+- Theme selection
+- Minimal mode toggle
+- Persistent settings
 
 ## Browser Compatibility
-- Compatible with **Firefox 79.0 or later**.
-- Supports modern web standards and **APIs**.
+- Firefox 79.0 or later
+- Optimized for Firefox's Screen Capture API
+- WebM format support required
 
 ## Installation & Usage
+1. Install from [Firefox Add-ons](https://addons.mozilla.org/en-US/firefox/addon/screen-recorder-pro/)
+2. Click extension icon to launch
+3. Select recording settings
+4. Choose screen area
+5. Start recording
+6. Save and manage recordings
 
-1. Install directly from the [Firefox Add-ons store](https://addons.mozilla.org/en-US/firefox/addon/screen-recorder-pro/).
-2. Click the extension icon to open the recorder.
-3. Configure your recording settings.
-4. Click **"Start Recording"** and select the screen area to capture.
-5. Use the control panel to manage recording.
-6. Save your recording when finished.
+## Performance & Security
+- Optimized memory usage
+- Fast startup and recording
+- Secure file handling
+- Standard content security policy
+- Safe local storage implementation
 
-## Perfect For
-- Creating tutorials and educational content.
-- Recording presentations or gameplay.
-- Technical demonstrations and bug reporting.
+## Known Limitations
+- WebM format only
+- Firefox-specific implementation
+- Requires screen sharing permission
 
-_For more information and updates, visit the [GitHub repository](https://github.com/ali00209/Screen-Recoder-)._
+_For updates and more information, visit our [GitHub repository](https://github.com/ali00209/Screen-Recoder-)._
