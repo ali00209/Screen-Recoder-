@@ -37,6 +37,7 @@ const elements = {
     this.saveSettingsBtn = document.getElementById('saveSettingsBtn');
     this.backBtn = document.getElementById('backBtn');
     this.appContainer = document.querySelector('.app-container');
+    this.historyBtn = document.getElementById('historyBtn');
   }
 };
 
@@ -198,6 +199,8 @@ async function startRecording() {
     elements.downloadBtn.disabled = true;
     elements.startBtn.disabled = true;
     elements.saveSettingsBtn.disabled = true;
+    elements.historyBtn.disabled = true;
+    elements.historyBtn.style.opacity = '0.5';
     
     try {
       const resolution = elements.resolution.value.split('x').map(Number);
@@ -338,27 +341,40 @@ async function startRecording() {
         }
 
         recordedBlob = new Blob(recordedChunks, { type: options.mimeType });
-        if (recordedBlob.size === 0) {
-          throw new Error('Recorded blob is empty');
-        }
-
-        elements.downloadBtn.disabled = false;
-        updateStatus('stopped', 'Recording complete');
         
-        // Clean up old URL if exists
+        // Save to history
+        const filename = `screen-recording-${elements.resolution.value}-${Date.now()}.webm`;
+        await saveRecordingToDB(recordedBlob, filename);
+
+        // Update player
         if (elements.player.src) {
           URL.revokeObjectURL(elements.player.src);
+          elements.player.removeAttribute('src');
+          elements.player.load();
         }
         
         const url = URL.createObjectURL(recordedBlob);
         elements.player.src = url;
         elements.preview.style.display = 'none';
         elements.playerContainer.style.display = 'block';
+        elements.downloadBtn.disabled = false;
         
-        // Only play if the blob is valid
+        // Try to play
         if (elements.player.readyState >= 2) {
-          elements.player.play().catch(console.error);
+          try {
+            await elements.player.play();
+          } catch (error) {
+            console.warn('Auto-play failed:', error);
+          }
         }
+
+        updateStatus('stopped', 'Recording complete');
+
+        // Update history panel if open
+        if (document.getElementById('historyOverlay').classList.contains('active')) {
+          await updateHistoryPanel();
+        }
+        
       } catch (error) {
         console.error('Recording error:', error);
         updateStatus('ready', 'Recording failed');
@@ -402,33 +418,89 @@ async function startRecording() {
     cleanup();
     resetUIState();
     elements.saveSettingsBtn.disabled = false;
+    elements.historyBtn.disabled = false;
+    elements.historyBtn.style.opacity = '1';
   }
 }
 
-// Update downloadRecording with better error handling
+// Add IndexedDB initialization and helper functions
+const DB_NAME = 'ScreenRecorderDB';
+const DB_VERSION = 1;
+const STORE_NAME = 'recordings';
+
+let db;
+
+// Initialize IndexedDB
+async function initDB() {
+  try {
+    db = await new Promise((resolve, reject) => {
+      const request = indexedDB.open(DB_NAME, DB_VERSION);
+      
+      request.onerror = () => reject(request.error);
+      request.onsuccess = () => resolve(request.result);
+      
+      request.onupgradeneeded = (event) => {
+        const db = event.target.result;
+        if (!db.objectStoreNames.contains(STORE_NAME)) {
+          const store = db.createObjectStore(STORE_NAME, { keyPath: 'id', autoIncrement: true });
+          store.createIndex('timestamp', 'timestamp');
+        }
+      };
+    });
+  } catch (error) {
+    console.error('IndexedDB initialization error:', error);
+  }
+}
+
+// Save recording to IndexedDB
+async function saveRecordingToDB(blob, filename) {
+  try {
+    const store = db.transaction(STORE_NAME, 'readwrite').objectStore(STORE_NAME);
+    const recording = {
+      blob: blob,
+      filename: filename,
+      timestamp: Date.now(),
+      size: blob.size,
+      type: blob.type,
+      resolution: elements.resolution.value
+    };
+    await store.add(recording);
+  } catch (error) {
+    console.error('Error saving to IndexedDB:', error);
+  }
+}
+
+// Update downloadRecording to use IndexedDB
 async function downloadRecording() {
   if (!recordedBlob) return;
 
   try {
     updateStatus('ready', 'Starting download...');
-    const url = URL.createObjectURL(recordedBlob);
+    const filename = `screen-recording-${elements.resolution.value}-${Date.now()}.webm`;
     
+    // Save to IndexedDB first
+    await saveRecordingToDB(recordedBlob, filename);
+    
+    const url = URL.createObjectURL(recordedBlob);
     const downloadId = await browser.downloads.download({
       url: url,
-      filename: `screen-recording-${elements.resolution.value}-${Date.now()}.webm`,
+      filename: filename,
       saveAs: true
     });
 
     URL.revokeObjectURL(url);
 
+    // Monitor download progress
     browser.downloads.onChanged.addListener(function onChanged(delta) {
-      if (delta.id === downloadId && delta.state) {
-        if (delta.state.current === 'complete') {
-          updateStatus('ready', 'Download completed');
-        } else if (delta.state.current === 'interrupted') {
-          updateStatus('ready', 'Download failed');
+      if (delta.id === downloadId) {
+        if (delta.state) {
+          if (delta.state.current === 'complete') {
+            updateStatus('ready', 'Download completed');
+          } else if (delta.state.current === 'interrupted') {
+            updateStatus('ready', 'Download interrupted - saved to temporary storage');
+          }
+          browser.downloads.onChanged.removeListener(onChanged);
         }
-        browser.downloads.onChanged.removeListener(onChanged);
       }
     });
   } catch (error) {
@@ -437,39 +509,32 @@ async function downloadRecording() {
   }
 }
 
-// Add cleanup on window unload
-window.addEventListener('unload', cleanup);
-
-// Initialize on DOM load
-document.addEventListener('DOMContentLoaded', () => {
-  elements.init();
-  setTheme(localStorage.getItem('theme') || 'light');
-  
-  // Load minimal mode preference
-  const minimalMode = localStorage.getItem('minimalMode') === 'true';
-  if (minimalMode) {
-    elements.appContainer.classList.add('minimal');
+// Update getSavedRecordings function to properly handle the promise
+async function getSavedRecordings() {
+  try {
+    const store = db.transaction(STORE_NAME, 'readonly').objectStore(STORE_NAME);
+    return new Promise((resolve, reject) => {
+      const request = store.getAll();
+      request.onsuccess = () => resolve(request.result || []);
+      request.onerror = () => reject(request.error);
+    });
+  } catch (error) {
+    console.error('Error getting saved recordings:', error);
+    return [];
   }
-  
-  document.addEventListener('click', (e) => {
-    const target = e.target.closest('button');
-    if (!target) return;
-    
-    switch(target.id) {
-      case 'startBtn': startRecording(); break;
-      case 'stopBtn': stopRecording(); break;
-      case 'downloadBtn': downloadRecording(); break;
-      case 'themeToggle': toggleTheme(); break;
-      case 'saveSettingsBtn': saveSettings(); break;
-      case 'backBtn': toggleMinimalMode(); break;
-    }
-  });
+}
 
-  loadSavedSettings();
-  updateStatus('ready', 'Ready');
-});
+// Add function to delete recording from IndexedDB
+async function deleteRecording(id) {
+  try {
+    const store = db.transaction(STORE_NAME, 'readwrite').objectStore(STORE_NAME);
+    await store.delete(id);
+  } catch (error) {
+    console.error('Error deleting recording:', error);
+  }
+}
 
-// Update cleanup function to be more thorough
+// Update cleanup to handle IndexedDB cleanup
 function cleanup() {
   try {
     stopCountdown();
@@ -497,7 +562,6 @@ function cleanup() {
     recordedBlob = null;
     resetTimer();
     
-    // Reset UI elements with null checks
     if (elements.preview) {
       elements.preview.style.display = 'block';
     }
@@ -507,7 +571,6 @@ function cleanup() {
     if (elements.downloadBtn) {
       elements.downloadBtn.disabled = true;
     }
-    
   } catch (error) {
     console.error('Cleanup error:', error);
   }
@@ -530,6 +593,8 @@ function resetUIState() {
   elements.codec.disabled = false;
   elements.delay.disabled = false;
   elements.saveSettingsBtn.disabled = false;
+  elements.historyBtn.disabled = false;
+  elements.historyBtn.style.opacity = '1';
 }
 
 // Add minimal mode toggle function
@@ -537,3 +602,228 @@ function toggleMinimalMode() {
   elements.appContainer.classList.toggle('minimal');
   localStorage.setItem('minimalMode', elements.appContainer.classList.contains('minimal'));
 }
+
+// Add these functions to handle history functionality
+function formatFileSize(bytes) {
+  if (bytes === 0) return '0 B';
+  const k = 1024;
+  const sizes = ['B', 'KB', 'MB', 'GB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+}
+
+function formatDate(timestamp) {
+  return new Date(timestamp).toLocaleString();
+}
+
+// Update updateHistoryPanel function to add click handlers for recordings
+async function updateHistoryPanel() {
+  try {
+    const recordings = await getSavedRecordings();
+    const recordingsList = document.getElementById('recordingsList');
+    recordingsList.innerHTML = '';
+
+    if (!Array.isArray(recordings) || recordings.length === 0) {
+      recordingsList.innerHTML = `
+        <div class="recording-item" style="justify-content: center">
+          <span class="recording-meta">No recordings found</span>
+        </div>
+      `;
+      return;
+    }
+
+    recordings.forEach(recording => {
+      const item = document.createElement('div');
+      item.className = 'recording-item';
+      item.innerHTML = `
+        <div class="recording-info" style="cursor: pointer;" data-id="${recording.id}">
+          <span class="recording-title">${recording.filename}</span>
+          <span class="recording-meta">
+            ${formatFileSize(recording.size)} • ${formatDate(recording.timestamp)}
+          </span>
+        </div>
+        <div class="recording-actions">
+          <button class="recording-action-btn" data-action="download" data-id="${recording.id}" title="Download">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+              <polyline points="7 10 12 15 17 10"/>
+              <line x1="12" y1="15" x2="12" y2="3"/>
+            </svg>
+          </button>
+          <button class="recording-action-btn" data-action="delete" data-id="${recording.id}" title="Delete">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <polyline points="3 6 5 6 21 6"/>
+              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+            </svg>
+          </button>
+        </div>
+      `;
+      recordingsList.appendChild(item);
+
+      // Add click handler for the recording info section
+      const infoSection = item.querySelector('.recording-info');
+      infoSection.addEventListener('click', async () => {
+        const recordings = await getSavedRecordings();
+        const recording = recordings.find(r => r.id === parseInt(infoSection.dataset.id));
+        if (recording) {
+          showRecordingInPlayer(recording);
+        }
+      });
+    });
+  } catch (error) {
+    console.error('Error updating history panel:', error);
+    const recordingsList = document.getElementById('recordingsList');
+    recordingsList.innerHTML = `
+      <div class="recording-item" style="justify-content: center">
+        <span class="recording-meta">Error loading recordings</span>
+      </div>
+    `;
+  }
+}
+
+// Add function to show recording in player
+async function showRecordingInPlayer(recording) {
+  try {
+    // Clean up any existing playback
+    if (elements.player.src) {
+      URL.revokeObjectURL(elements.player.src);
+    }
+    
+    // Create new blob URL and set up player
+    const url = URL.createObjectURL(recording.blob);
+    elements.player.src = url;
+    elements.preview.style.display = 'none';
+    elements.playerContainer.style.display = 'block';
+    
+    // Update UI state
+    elements.downloadBtn.disabled = false;
+    recordedBlob = recording.blob;
+    
+    // Only autoplay if video is visible
+    const isVisible = await new Promise(resolve => {
+      const observer = new IntersectionObserver(([entry]) => {
+        observer.disconnect();
+        resolve(entry.isIntersecting);
+      });
+      observer.observe(elements.player);
+    });
+    
+    if (isVisible) {
+      try {
+        await elements.player.play();
+      } catch (error) {
+        console.warn('Auto-play failed:', error);
+      }
+    }
+    
+    updateStatus('ready', 'Playing recording from history');
+  } catch (error) {
+    console.error('Error showing recording:', error);
+    updateStatus('ready', 'Failed to play recording');
+  }
+}
+
+// Update history button click handler
+document.getElementById('historyBtn').addEventListener('click', async () => {
+  const historyOverlay = document.getElementById('historyOverlay');
+  historyOverlay.classList.add('active');
+  await updateHistoryPanel();
+});
+
+// Add close button handler
+document.getElementById('closeHistoryBtn').addEventListener('click', () => {
+  const historyOverlay = document.getElementById('historyOverlay');
+  historyOverlay.classList.remove('active');
+});
+
+// Close overlay when clicking outside the modal
+document.getElementById('historyOverlay').addEventListener('click', (e) => {
+  if (e.target === e.currentTarget) {
+    e.currentTarget.classList.remove('active');
+  }
+});
+
+// Add escape key handler
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') {
+    const historyOverlay = document.getElementById('historyOverlay');
+    historyOverlay.classList.remove('active');
+  }
+});
+
+// Add click handler for recording actions
+document.getElementById('recordingsList').addEventListener('click', async (e) => {
+  const button = e.target.closest('.recording-action-btn');
+  if (!button) return;
+
+  const action = button.dataset.action;
+  const id = parseInt(button.dataset.id);
+  const recordings = await getSavedRecordings();
+  const recording = recordings.find(r => r.id === id);
+
+  if (action === 'download') {
+    const url = URL.createObjectURL(recording.blob);
+    await browser.downloads.download({
+      url: url,
+      filename: recording.filename,
+      saveAs: true
+    });
+    URL.revokeObjectURL(url);
+  } else if (action === 'delete') {
+    if (confirm('Are you sure you want to delete this recording?')) {
+      await deleteRecording(id);
+      await updateHistoryPanel();
+      updateStatus('ready', 'Recording deleted');
+    }
+  }
+});
+
+// Add function to clear all recordings
+async function clearAllRecordings() {
+  try {
+    const store = db.transaction(STORE_NAME, 'readwrite').objectStore(STORE_NAME);
+    await store.clear();
+    await updateHistoryPanel();
+    updateStatus('ready', 'All recordings cleared');
+  } catch (error) {
+    console.error('Error clearing recordings:', error);
+    updateStatus('ready', 'Failed to clear recordings');
+  }
+}
+
+// Update DOMContentLoaded to remove unnecessary initializations
+document.addEventListener('DOMContentLoaded', async () => {
+  await initDB();
+  elements.init();
+  
+  setTheme(localStorage.getItem('theme') || 'light');
+  
+  const minimalMode = localStorage.getItem('minimalMode') === 'true';
+  if (minimalMode) {
+    elements.appContainer.classList.add('minimal');
+  }
+  
+  // Add clear history button listener
+  document.getElementById('clearHistoryBtn').addEventListener('click', async () => {
+    if (confirm('Are you sure you want to delete all recordings? This cannot be undone.')) {
+      await clearAllRecordings();
+    }
+  });
+  
+  document.addEventListener('click', (e) => {
+    const target = e.target.closest('button');
+    if (!target) return;
+    
+    switch(target.id) {
+      case 'startBtn': startRecording(); break;
+      case 'stopBtn': stopRecording(); break;
+      case 'downloadBtn': downloadRecording(); break;
+      case 'themeToggle': toggleTheme(); break;
+      case 'saveSettingsBtn': saveSettings(); break;
+      case 'backBtn': toggleMinimalMode(); break;
+    }
+  });
+
+  loadSavedSettings();
+  updateStatus('ready', 'Ready');
+});

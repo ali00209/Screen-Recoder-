@@ -693,6 +693,7 @@ button:disabled {
   width: 100%;
   max-width: 100%;
   justify-content: center;
+  margin-top: 1rem;
 }
 
 /* Add styles for minimal toggle and label */
@@ -849,4 +850,242 @@ button:disabled {
   .app-container {
     display: none;
   }
+}
+
+/* Add history section styles */
+.history-section {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border-color);
+}
+
+.history-header h3 {
+  font-size: 0.875rem;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  letter-spacing: 0.05em;
+  font-weight: 600;
+}
+
+.history-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  width: 100%;
+}
+
+.history-panel {
+  background-color: var(--input-bg);
+  border-radius: 0.5rem;
+  border: 1px solid var(--border-color);
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.recordings-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.5rem;
+}
+
+.recording-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem;
+  background-color: var(--sidebar-color);
+  border-radius: 0.375rem;
+  border: 1px solid var(--border-color);
+  transition: all 0.2s ease;
+}
+
+.recording-item:hover {
+  border-color: var(--primary-color);
+  background-color: var(--hover-color);
+}
+
+.recording-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.recording-title {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.recording-meta {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+}
+
+.recording-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.recording-action-btn {
+  padding: 0.375rem;
+  border-radius: 0.375rem;
+  border: none;
+  background: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.recording-action-btn:hover {
+  color: var(--text-primary);
+  background-color: var(--hover-color);
+}
+
+.recording-action-btn svg {
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+/* Add styles for history header and clear button */
+.history-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.clear-history-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.375rem 0.75rem;
+  font-size: 0.75rem;
+  color: var(--danger-color);
+  border: 1px solid var(--danger-color);
+  background: none;
+}
+
+.clear-history-btn:hover {
+  background-color: var(--danger-color);
+  color: white;
+}
+
+.clear-history-btn svg {
+  width: 1rem;
+  height: 1rem;
+}
+
+/* Add styles for top actions */
+.top-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.history-toggle {
+  background: none;
+  border: none;
+  color: var(--text-primary);
+  padding: 0.5rem;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.history-toggle:hover {
+  background-color: var(--hover-color);
+}
+
+/* Add styles for history overlay */
+.history-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: none;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  backdrop-filter: blur(4px);
+}
+
+.history-modal {
+  background-color: var(--sidebar-color);
+  border-radius: 1rem;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  width: 90%;
+  max-width: 600px;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.history-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.5rem;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.history-modal-header h3 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.history-actions {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.close-history-btn {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  padding: 0.5rem;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.close-history-btn:hover {
+  color: var(--text-primary);
+  background-color: var(--hover-color);
+}
+
+/* Update recordings list styles for modal */
+.recordings-list {
+  padding: 1.5rem;
+  overflow-y: auto;
+  max-height: calc(80vh - 5rem);
+}
+
+/* Add animation for overlay */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideIn {
+  from { transform: translateY(-20px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+.history-overlay.active {
+  display: flex;
+  animation: fadeIn 0.2s ease-out;
+}
+
+.history-overlay.active .history-modal {
+  animation: slideIn 0.2s ease-out;
 }

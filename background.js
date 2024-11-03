@@ -1,86 +1,83 @@
 let recorderWindowId = null;
 let isCreatingWindow = false;
+let windowPosition = null;
+
+// Cache window position for faster reopening
+async function cacheWindowPosition() {
+  try {
+    const screen = await browser.windows.getCurrent({ windowTypes: ['normal'] });
+    const width = 850;
+    const height = 700;
+    const screenWidth = window.screen.availWidth || screen.width;
+    const screenHeight = window.screen.availHeight || screen.height;
+    
+    windowPosition = {
+      left: Math.min(Math.max(0, Math.floor((screenWidth - width) / 2)), screenWidth - width),
+      top: Math.min(Math.max(0, Math.floor((screenHeight - height) / 2)), screenHeight - height),
+      width,
+      height
+    };
+  } catch (error) {
+    console.error('Error caching position:', error);
+    // Fallback position
+    windowPosition = { left: 100, top: 100, width: 850, height: 700 };
+  }
+}
 
 // Function to check if window exists and is valid
 async function isWindowValid(windowId) {
+    if (!windowId) return false;
     try {
         const window = await browser.windows.get(windowId);
         return window && !window.incognito && window.type === "popup";
-    } catch (error) {
+    } catch {
         return false;
     }
 }
 
 // Function to focus existing window
 async function focusExistingWindow(windowId) {
+    if (!windowId) return false;
     try {
         await browser.windows.update(windowId, {
             focused: true,
             drawAttention: true
         });
         return true;
-    } catch (error) {
-        console.error('Error focusing window:', error);
+    } catch {
         return false;
-    }
-}
-
-// Function to get centered position
-async function getCenteredPosition(width, height) {
-    try {
-        const screen = await browser.windows.getCurrent({ windowTypes: ['normal'] });
-        const screenWidth = window.screen.availWidth || screen.width;
-        const screenHeight = window.screen.availHeight || screen.height;
-        
-        const left = Math.max(0, Math.floor((screenWidth - width) / 2));
-        const top = Math.max(0, Math.floor((screenHeight - height) / 2));
-        
-        return {
-            left: Math.min(left, screenWidth - width),
-            top: Math.min(top, screenHeight - height),
-            width,
-            height
-        };
-    } catch (error) {
-        console.error('Error calculating center position:', error);
-        return {
-            left: Math.floor((1920 - width) / 2),
-            top: Math.floor((1080 - height) / 2),
-            width,
-            height
-        };
     }
 }
 
 // Function to create new window
 async function createRecorderWindow() {
-    if (isCreatingWindow) {
-        return;
-    }
-
+    if (isCreatingWindow) return;
     isCreatingWindow = true;
+
     try {
+        // Close existing window if any
         if (recorderWindowId !== null) {
             try {
                 await browser.windows.remove(recorderWindowId);
-            } catch (error) {
-                console.error('Error closing existing window:', error);
-            }
+            } catch {}
             cleanupWindow();
         }
 
-        const position = await getCenteredPosition(850, 700);
+        // Use cached position or create new
+        if (!windowPosition) {
+            await cacheWindowPosition();
+        }
+
         const window = await browser.windows.create({
             url: "recorder.html",
             type: "popup",
-            ...position,
+            ...windowPosition,
             allowScriptsToClose: true
         });
         
         recorderWindowId = window.id;
         
-        const isValid = await isWindowValid(recorderWindowId);
-        if (!isValid) {
+        if (!await isWindowValid(recorderWindowId)) {
             throw new Error('Created window is not valid');
         }
     } catch (error) {
@@ -91,17 +88,22 @@ async function createRecorderWindow() {
     }
 }
 
-// Main click handler
+// Main click handler with debounce
+let clickTimeout = null;
 browser.browserAction.onClicked.addListener(async () => {
+    if (clickTimeout) return;
+    
+    clickTimeout = setTimeout(() => {
+        clickTimeout = null;
+    }, 1000);
+
     try {
         if (recorderWindowId !== null) {
             const isValid = await isWindowValid(recorderWindowId);
             
             if (isValid) {
                 const focused = await focusExistingWindow(recorderWindowId);
-                if (focused) {
-                    return;
-                }
+                if (focused) return;
             }
             
             cleanupWindow();
@@ -132,8 +134,9 @@ browser.windows.onFocusChanged.addListener(async (windowId) => {
     }
 });
 
-// Clean up on extension startup
+// Cache position on extension startup
 browser.runtime.onStartup.addListener(() => {
+    cacheWindowPosition();
     cleanupWindow();
 });
 
@@ -151,12 +154,8 @@ function cleanupWindow() {
         try {
             browser.windows.get(recorderWindowId).then(() => {
                 browser.windows.remove(recorderWindowId);
-            }).catch(() => {
-                // Window already closed, ignore
-            });
-        } catch (error) {
-            // Ignore cleanup errors
-        }
+            }).catch(() => {});
+        } catch {}
     }
     recorderWindowId = null;
     isCreatingWindow = false;

@@ -11,7 +11,8 @@
     "<all_urls>",
     "storage",
     "downloads",
-    "downloads.open"
+    "downloads.open",
+    "unlimitedStorage"
   ],
   "browser_specific_settings": {
     "gecko": {
