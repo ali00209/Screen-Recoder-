@@ -1,5 +1,7 @@
 # Screen Recorder v1.3
 
+![Screen Recorder](https://github.com/user-attachments/assets/7c444f55-feda-48d5-94cd-f9de4047d8c0)
+
 A Firefox browser extension for high-quality screen recording with professional features and an intuitive interface.
 
 [![Download from Firefox Add-ons](https://img.shields.io/badge/Firefox-Download-orange?logo=firefox)](https://addons.mozilla.org/en-US/firefox/addon/screen-recorder-pro/)
