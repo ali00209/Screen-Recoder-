@@ -521,7 +521,16 @@ async function getSavedRecordings() {
     const store = db.transaction(STORE_NAME, 'readonly').objectStore(STORE_NAME);
     return new Promise((resolve, reject) => {
       const request = store.getAll();
-      request.onsuccess = () => resolve(request.result || []);
+      request.onsuccess = () => {
+        const recordings = request.result || [];
+        // Ensure each recording has a valid blob
+        recordings.forEach(recording => {
+          if (!(recording.blob instanceof Blob)) {
+            recording.blob = new Blob([recording.blob], { type: recording.type });
+          }
+        });
+        resolve(recordings);
+      };
       request.onerror = () => reject(request.error);
     });
   } catch (error) {
@@ -611,10 +620,12 @@ function toggleMinimalMode() {
 
 // Add these functions to handle history functionality
 function formatFileSize(bytes) {
-  if (bytes === 0) return '0 B';
+  if (bytes === 0) return '0 Bytes';
+  
   const k = 1024;
-  const sizes = ['B', 'KB', 'MB', 'GB'];
+  const sizes = ['Bytes', 'KB', 'MB', 'GB'];
   const i = Math.floor(Math.log(bytes) / Math.log(k));
+  
   return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
 }
 
@@ -647,56 +658,73 @@ async function updateHistoryPanel() {
       recordingInfo.className = 'recording-info';
       recordingInfo.style.cursor = 'pointer';
       recordingInfo.dataset.id = recording.id;
-      recordingInfo.innerHTML = `
-        <span class="recording-title">${recording.filename}</span>
-        <span class="recording-meta">
-          ${formatFileSize(recording.size)} • ${formatDate(recording.timestamp)}
-        </span>
-      `;
-      item.appendChild(recordingInfo);
+      
+      // Add click handler for the recording info
+      recordingInfo.addEventListener('click', async () => {
+        try {
+          // Update UI to show loading state
+          updateStatus('ready', 'Loading recording...');
+          
+          // Create object URL from the blob
+          const url = URL.createObjectURL(recording.blob);
+          
+          // Update the player source
+          elements.preview.style.display = 'none';
+          elements.playerContainer.style.display = 'block';
+          
+          if (elements.player.src) {
+            URL.revokeObjectURL(elements.player.src);
+          }
+          
+          elements.player.src = url;
+          elements.player.load();
+          
+          // Enable download button and update recorded blob
+          elements.downloadBtn.disabled = false;
+          recordedBlob = recording.blob;
+          
+          // Try to play the video
+          try {
+            await elements.player.play();
+          } catch (error) {
+            console.warn('Auto-play failed:', error);
+          }
+          
+          // Close the history overlay
+          document.getElementById('historyOverlay').classList.remove('active');
+          
+          updateStatus('ready', 'Recording loaded');
+        } catch (error) {
+          console.error('Error loading recording:', error);
+          updateStatus('ready', 'Failed to load recording');
+        }
+      });
+
+      const titleSpan = document.createElement('span');
+      titleSpan.className = 'recording-title';
+      titleSpan.textContent = recording.filename;
+
+      const metaSpan = document.createElement('span');
+      metaSpan.className = 'recording-meta';
+      metaSpan.textContent = `${formatFileSize(recording.size)} • ${formatDate(recording.timestamp)}`;
+
+      recordingInfo.appendChild(titleSpan);
+      recordingInfo.appendChild(metaSpan);
 
       // Create recording actions section
       const recordingActions = document.createElement('div');
       recordingActions.className = 'recording-actions';
 
-      const downloadButton = document.createElement('button');
-      downloadButton.className = 'recording-action-btn';
-      downloadButton.dataset.action = 'download';
-      downloadButton.dataset.id = recording.id;
-      downloadButton.title = 'Download';
-      downloadButton.innerHTML = `
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-          <polyline points="7 10 12 15 17 10"/>
-          <line x1="12" y1="15" x2="12" y2="3"/>
-        </svg>
-      `;
-      recordingActions.appendChild(downloadButton);
+      // Create download button
+      const downloadButton = createActionButton('download', recording.id, 'Download');
+      const deleteButton = createActionButton('delete', recording.id, 'Delete');
 
-      const deleteButton = document.createElement('button');
-      deleteButton.className = 'recording-action-btn';
-      deleteButton.dataset.action = 'delete';
-      deleteButton.dataset.id = recording.id;
-      deleteButton.title = 'Delete';
-      deleteButton.innerHTML = `
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-          <polyline points="3 6 5 6 21 6"/>
-          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
-        </svg>
-      `;
+      recordingActions.appendChild(downloadButton);
       recordingActions.appendChild(deleteButton);
 
+      item.appendChild(recordingInfo);
       item.appendChild(recordingActions);
       recordingsList.appendChild(item);
-
-      // Add click handler for the recording info section
-      recordingInfo.addEventListener('click', async () => {
-        const recordings = await getSavedRecordings();
-        const recording = recordings.find(r => r.id === parseInt(recordingInfo.dataset.id));
-        if (recording) {
-          showRecordingInPlayer(recording);
-        }
-      });
     });
   } catch (error) {
     console.error('Error updating history panel:', error);
@@ -896,7 +924,7 @@ function setupErrorRecovery() {
   });
 }
 
-// Replace innerHTML with safer alternatives
+// Replace updateRecordingsList function with this safer version
 function updateRecordingsList(recordings) {
   const recordingsList = document.getElementById('recordingsList');
   
@@ -923,42 +951,143 @@ function updateRecordingsList(recordings) {
     const item = document.createElement('div');
     item.className = 'recording-item';
 
+    // Create recording info section
     const recordingInfo = document.createElement('div');
     recordingInfo.className = 'recording-info';
+    recordingInfo.style.cursor = 'pointer';
     recordingInfo.dataset.id = recording.id;
 
-    const title = document.createElement('span');
-    title.className = 'recording-title';
-    title.textContent = recording.filename;
+    const titleSpan = document.createElement('span');
+    titleSpan.className = 'recording-title';
+    titleSpan.textContent = recording.filename;
 
-    const meta = document.createElement('span');
-    meta.className = 'recording-meta';
-    meta.textContent = `${recording.duration} • ${recording.date}`;
+    const metaSpan = document.createElement('span');
+    metaSpan.className = 'recording-meta';
+    metaSpan.textContent = `${formatFileSize(recording.size)} • ${formatDate(recording.timestamp)}`;
 
-    recordingInfo.appendChild(title);
-    recordingInfo.appendChild(meta);
+    recordingInfo.appendChild(titleSpan);
+    recordingInfo.appendChild(metaSpan);
 
+    // Create recording actions section
     const recordingActions = document.createElement('div');
     recordingActions.className = 'recording-actions';
 
-    // Add download button
-    const downloadButton = document.createElement('button');
-    downloadButton.className = 'recording-action-btn';
-    downloadButton.dataset.action = 'download';
-    downloadButton.dataset.id = recording.id;
-    downloadButton.title = 'Download';
-    
-    const downloadIcon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-    downloadIcon.setAttribute('viewBox', '0 0 24 24');
-    downloadIcon.setAttribute('fill', 'none');
-    downloadIcon.setAttribute('stroke', 'currentColor');
-    // Add path elements for download icon
-    
-    downloadButton.appendChild(downloadIcon);
+    // Create download button
+    const downloadButton = createActionButton('download', recording.id, 'Download');
+    const deleteButton = createActionButton('delete', recording.id, 'Delete');
+
     recordingActions.appendChild(downloadButton);
+    recordingActions.appendChild(deleteButton);
 
     item.appendChild(recordingInfo);
     item.appendChild(recordingActions);
     recordingsList.appendChild(item);
   });
 }
+
+// Helper function to create action buttons
+function createActionButton(action, id, title) {
+  const button = document.createElement('button');
+  button.className = 'recording-action-btn';
+  button.dataset.action = action;
+  button.dataset.id = id;
+  button.title = title;
+
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  svg.setAttribute('viewBox', '0 0 24 24');
+  svg.setAttribute('fill', 'none');
+  svg.setAttribute('stroke', 'currentColor');
+  
+  // Add appropriate paths based on action type
+  if (action === 'download') {
+    const path1 = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    path1.setAttribute('d', 'M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4');
+    const path2 = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
+    path2.setAttribute('points', '7 10 12 15 17 10');
+    const path3 = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+    path3.setAttribute('x1', '12');
+    path3.setAttribute('y1', '15');
+    path3.setAttribute('x2', '12');
+    path3.setAttribute('y2', '3');
+    svg.appendChild(path1);
+    svg.appendChild(path2);
+    svg.appendChild(path3);
+  } else if (action === 'delete') {
+    const path1 = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
+    path1.setAttribute('points', '3 6 5 6 21 6');
+    const path2 = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    path2.setAttribute('d', 'M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2');
+    svg.appendChild(path1);
+    svg.appendChild(path2);
+  }
+
+  button.appendChild(svg);
+  return button;
+}
+
+const VALID_VIDEO_TYPES = [
+  "video/webm",
+  "video/mp4",
+  "video/x-matroska"
+];
+
+function isValidFileType(file) {
+  return VALID_VIDEO_TYPES.includes(file.type);
+}
+
+function handleFile(file) {
+  if (!isValidFileType(file)) {
+    throw new Error('Invalid file type. Only WebM, MP4, and MKV formats are supported.');
+  }
+  
+  return {
+    name: file.name,
+    size: file.size,
+    type: file.type,
+    lastModified: file.lastModified
+  };
+}
+
+function updateFilePreview(file) {
+  const previewContainer = document.getElementById('preview');
+  
+  // Clear previous preview
+  while (previewContainer.firstChild) {
+    previewContainer.removeChild(previewContainer.firstChild);
+  }
+  
+  const fileInfo = document.createElement('div');
+  fileInfo.className = 'file-info';
+  
+  const nameElement = document.createElement('p');
+  nameElement.textContent = `File: ${file.name}`;
+  
+  const sizeElement = document.createElement('p');
+  sizeElement.textContent = `Size: ${formatFileSize(file.size)}`;
+  
+  fileInfo.appendChild(nameElement);
+  fileInfo.appendChild(sizeElement);
+  
+  previewContainer.appendChild(fileInfo);
+}
+
+// Add hover effect styles for recording items
+const additionalStyles = `
+.recording-info:hover {
+  background-color: var(--hover-color);
+  border-radius: 0.375rem;
+}
+
+.recording-item {
+  transition: all 0.2s ease;
+}
+
+.recording-item:hover {
+  transform: translateX(4px);
+}
+`;
+
+// Add the styles to the document
+const styleSheet = document.createElement('style');
+styleSheet.textContent = additionalStyles;
+document.head.appendChild(styleSheet);
