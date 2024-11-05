@@ -1,18 +1,15 @@
 {
   "manifest_version": 2,
   "name": "Screen Recorder",
-  "version": "1.2",
+  "version": "1.3",
   "description": "A simple screen recorder extension for capturing your screen content",
   "homepage_url": "https://github.com/ali00209/Screen-Recoder-",
   "author": "Ali",
   "permissions": [
     "activeTab",
-    "tabs", 
-    "<all_urls>",
     "storage",
     "downloads",
-    "downloads.open",
-    "unlimitedStorage"
+    "downloads.open"
   ],
   "browser_specific_settings": {
     "gecko": {
@@ -32,19 +29,14 @@
     "default_title": "Screen Recorder"
   },
   "background": {
-    "scripts": ["background.js"],
-    "persistent": false
+    "scripts": ["background.js"]
   },
   "icons": {
     "16": "icons/icon-16.png",
     "32": "icons/icon-32.png",
-    "48": "icons/icon-48.png", 
-    "96": "icons/icon-96.png",
+    "48": "icons/icon-48.png",
+    "96": "icons/icon-96.png", 
     "128": "icons/icon-128.png",
     "512": "icons/icon-512.png"
-  },
-  "developer": {
-    "name": "Ali",
-    "url": "https://github.com/ali00209/Screen-Recoder-"
   }
 }

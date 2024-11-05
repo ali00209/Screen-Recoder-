@@ -268,6 +268,9 @@ html, body {
   display: flex;
   align-items: center;
   justify-content: center;
+  transform: translateZ(0);
+  will-change: transform;
+  backface-visibility: hidden;
 }
 
 #preview, #player {
@@ -1088,4 +1091,9 @@ button:disabled {
 
 .history-overlay.active .history-modal {
   animation: slideIn 0.2s ease-out;
+}
+
+.recording-animation {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  will-change: opacity;
 }

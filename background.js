@@ -160,3 +160,38 @@ function cleanupWindow() {
     recorderWindowId = null;
     isCreatingWindow = false;
 }
+
+async function handleProtocolError(error) {
+  console.error('Protocol error:', error);
+  
+  if (error.message?.includes('Extension is invalid')) {
+    // Handle extension validation errors
+    await browser.notifications.create({
+      type: 'basic',
+      title: 'Extension Error',
+      message: 'There was an issue with the extension. Please try reinstalling.',
+      iconUrl: 'icons/icon-48.png'
+    });
+    return false;
+  }
+  
+  return true;
+}
+
+async function reportError(error) {
+  const errorReport = {
+    timestamp: new Date().toISOString(),
+    message: error.message,
+    stack: error.stack,
+    type: error.name,
+    version: browser.runtime.getManifest().version
+  };
+
+  try {
+    await browser.storage.local.set({
+      errorLogs: errorReport
+    });
+  } catch (e) {
+    console.error('Failed to save error report:', e);
+  }
+}

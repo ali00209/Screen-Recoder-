@@ -7,6 +7,12 @@ const DEFAULT_BITRATES = {
   '640x360': 2000000
 };
 
+const OPTIMAL_BITRATES = {
+  '3840x2160': { min: 35000000, ideal: 45000000, max: 55000000 },
+  '2560x1440': { min: 25000000, ideal: 32000000, max: 40000000 },
+  '1920x1080': { min: 12000000, ideal: 16000000, max: 20000000 }
+};
+
 let mediaRecorder;
 let recordedChunks = [];
 let recordedBlob = null;
@@ -621,50 +627,72 @@ async function updateHistoryPanel() {
   try {
     const recordings = await getSavedRecordings();
     const recordingsList = document.getElementById('recordingsList');
-    recordingsList.innerHTML = '';
+    recordingsList.innerHTML = ''; // Clear existing content
 
     if (!Array.isArray(recordings) || recordings.length === 0) {
-      recordingsList.innerHTML = `
-        <div class="recording-item" style="justify-content: center">
-          <span class="recording-meta">No recordings found</span>
-        </div>
-      `;
+      const noRecordingsItem = document.createElement('div');
+      noRecordingsItem.className = 'recording-item';
+      noRecordingsItem.style.justifyContent = 'center';
+      noRecordingsItem.innerHTML = `<span class="recording-meta">No recordings found</span>`;
+      recordingsList.appendChild(noRecordingsItem);
       return;
     }
 
     recordings.forEach(recording => {
       const item = document.createElement('div');
       item.className = 'recording-item';
-      item.innerHTML = `
-        <div class="recording-info" style="cursor: pointer;" data-id="${recording.id}">
-          <span class="recording-title">${recording.filename}</span>
-          <span class="recording-meta">
-            ${formatFileSize(recording.size)} • ${formatDate(recording.timestamp)}
-          </span>
-        </div>
-        <div class="recording-actions">
-          <button class="recording-action-btn" data-action="download" data-id="${recording.id}" title="Download">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-              <polyline points="7 10 12 15 17 10"/>
-              <line x1="12" y1="15" x2="12" y2="3"/>
-            </svg>
-          </button>
-          <button class="recording-action-btn" data-action="delete" data-id="${recording.id}" title="Delete">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-              <polyline points="3 6 5 6 21 6"/>
-              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
-            </svg>
-          </button>
-        </div>
+
+      // Create recording info section
+      const recordingInfo = document.createElement('div');
+      recordingInfo.className = 'recording-info';
+      recordingInfo.style.cursor = 'pointer';
+      recordingInfo.dataset.id = recording.id;
+      recordingInfo.innerHTML = `
+        <span class="recording-title">${recording.filename}</span>
+        <span class="recording-meta">
+          ${formatFileSize(recording.size)} • ${formatDate(recording.timestamp)}
+        </span>
       `;
+      item.appendChild(recordingInfo);
+
+      // Create recording actions section
+      const recordingActions = document.createElement('div');
+      recordingActions.className = 'recording-actions';
+
+      const downloadButton = document.createElement('button');
+      downloadButton.className = 'recording-action-btn';
+      downloadButton.dataset.action = 'download';
+      downloadButton.dataset.id = recording.id;
+      downloadButton.title = 'Download';
+      downloadButton.innerHTML = `
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+          <polyline points="7 10 12 15 17 10"/>
+          <line x1="12" y1="15" x2="12" y2="3"/>
+        </svg>
+      `;
+      recordingActions.appendChild(downloadButton);
+
+      const deleteButton = document.createElement('button');
+      deleteButton.className = 'recording-action-btn';
+      deleteButton.dataset.action = 'delete';
+      deleteButton.dataset.id = recording.id;
+      deleteButton.title = 'Delete';
+      deleteButton.innerHTML = `
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+          <polyline points="3 6 5 6 21 6"/>
+          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+        </svg>
+      `;
+      recordingActions.appendChild(deleteButton);
+
+      item.appendChild(recordingActions);
       recordingsList.appendChild(item);
 
       // Add click handler for the recording info section
-      const infoSection = item.querySelector('.recording-info');
-      infoSection.addEventListener('click', async () => {
+      recordingInfo.addEventListener('click', async () => {
         const recordings = await getSavedRecordings();
-        const recording = recordings.find(r => r.id === parseInt(infoSection.dataset.id));
+        const recording = recordings.find(r => r.id === parseInt(recordingInfo.dataset.id));
         if (recording) {
           showRecordingInPlayer(recording);
         }
@@ -827,3 +855,110 @@ document.addEventListener('DOMContentLoaded', async () => {
   loadSavedSettings();
   updateStatus('ready', 'Ready');
 });
+
+class RecorderError extends Error {
+  constructor(message, type = 'general') {
+    super(message);
+    this.name = 'RecorderError';
+    this.type = type;
+  }
+}
+
+async function handleRecordingError(error) {
+  // Clean up recording state
+  await cleanup();
+  
+  if (error instanceof RecorderError) {
+    switch(error.type) {
+      case 'permission':
+        updateStatus('error', 'Permission denied - please allow screen sharing');
+        break;
+      case 'protocol':
+        updateStatus('error', 'Connection error - please try again');
+        break;
+      default:
+        updateStatus('error', 'Recording failed - please try again');
+    }
+  } else {
+    updateStatus('error', 'An unexpected error occurred');
+  }
+  
+  resetUIState();
+}
+
+function setupErrorRecovery() {
+  window.addEventListener('unhandledrejection', async (event) => {
+    if (event.reason?.name === 'NotAllowedError') {
+      await cleanup();
+      resetUIState();
+      updateStatus('error', 'Permission denied - please try again');
+    }
+  });
+}
+
+// Replace innerHTML with safer alternatives
+function updateRecordingsList(recordings) {
+  const recordingsList = document.getElementById('recordingsList');
+  
+  // Clear existing content safely
+  while (recordingsList.firstChild) {
+    recordingsList.removeChild(recordingsList.firstChild);
+  }
+
+  if (!recordings || recordings.length === 0) {
+    const emptyItem = document.createElement('div');
+    emptyItem.className = 'recording-item';
+    emptyItem.style.justifyContent = 'center';
+    
+    const emptySpan = document.createElement('span');
+    emptySpan.className = 'recording-meta';
+    emptySpan.textContent = 'No recordings found';
+    
+    emptyItem.appendChild(emptySpan);
+    recordingsList.appendChild(emptyItem);
+    return;
+  }
+
+  recordings.forEach(recording => {
+    const item = document.createElement('div');
+    item.className = 'recording-item';
+
+    const recordingInfo = document.createElement('div');
+    recordingInfo.className = 'recording-info';
+    recordingInfo.dataset.id = recording.id;
+
+    const title = document.createElement('span');
+    title.className = 'recording-title';
+    title.textContent = recording.filename;
+
+    const meta = document.createElement('span');
+    meta.className = 'recording-meta';
+    meta.textContent = `${recording.duration} • ${recording.date}`;
+
+    recordingInfo.appendChild(title);
+    recordingInfo.appendChild(meta);
+
+    const recordingActions = document.createElement('div');
+    recordingActions.className = 'recording-actions';
+
+    // Add download button
+    const downloadButton = document.createElement('button');
+    downloadButton.className = 'recording-action-btn';
+    downloadButton.dataset.action = 'download';
+    downloadButton.dataset.id = recording.id;
+    downloadButton.title = 'Download';
+    
+    const downloadIcon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    downloadIcon.setAttribute('viewBox', '0 0 24 24');
+    downloadIcon.setAttribute('fill', 'none');
+    downloadIcon.setAttribute('stroke', 'currentColor');
+    // Add path elements for download icon
+    
+    downloadButton.appendChild(downloadIcon);
+    recordingActions.appendChild(downloadButton);
+
+    item.appendChild(recordingInfo);
+    item.appendChild(recordingActions);
+    recordingsList.appendChild(item);
+  });
+}
