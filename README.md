@@ -1,4 +1,4 @@
-# Screen Recorder v1.3
+# Screen Recorder v1.5
 
 A Firefox browser extension for high-quality screen recording with professional features and an intuitive interface.
 

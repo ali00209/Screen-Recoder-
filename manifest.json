@@ -1,7 +1,7 @@
 {
   "manifest_version": 2,
   "name": "Screen Recorder",
-  "version": "1.3",
+  "version": "1.5",
   "description": "A simple screen recorder extension for capturing your screen content",
   "homepage_url": "https://github.com/ali00209/Screen-Recoder-",
   "author": "Ali",

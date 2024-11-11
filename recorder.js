@@ -130,25 +130,25 @@ function stopRecording() {
     // First check if we're in countdown
     if (isCountdownActive) {
       stopCountdown();
-      cleanup();
+      cleanup(true);
       updateStatus('ready', 'Countdown cancelled');
       resetUIState();
       return;
     }
 
-    // First check if we have a valid mediaRecorder
+    // Check if we have a valid mediaRecorder
     if (!mediaRecorder) {
       console.log('No active recorder found');
       updateStatus('ready', 'Ready');
-      cleanup();
+      cleanup(true);
       return;
     }
 
-    // Then check its state
+    // Check recorder state
     if (mediaRecorder.state === 'inactive') {
       console.log('Recorder already inactive');
       updateStatus('ready', 'Ready');
-      cleanup();
+      cleanup(true);
       return;
     }
 
@@ -167,7 +167,7 @@ function stopRecording() {
       console.warn('Error stopping recorder:', error);
     }
     
-    // Stop tracks even if mediaRecorder operations fail
+    // Stop tracks
     if (elements.preview.srcObject) {
       try {
         elements.preview.srcObject.getTracks().forEach(track => {
@@ -182,14 +182,14 @@ function stopRecording() {
       }
     }
     
-    // Always reset UI state and enable save button
+    // Reset UI state and enable save button
     resetUIState();
     elements.saveSettingsBtn.disabled = false;
 
   } catch (error) {
     console.error('Stop error:', error);
     updateStatus('ready', 'Recording stopped with errors');
-    cleanup();
+    cleanup(true);
     resetUIState();
     elements.saveSettingsBtn.disabled = false;
   }
@@ -550,44 +550,56 @@ async function deleteRecording(id) {
 }
 
 // Update cleanup to handle IndexedDB cleanup
-function cleanup() {
-  try {
-    stopCountdown();
-    
-    if (mediaRecorder && mediaRecorder.state !== 'inactive') {
-      mediaRecorder.stop();
+function cleanup(isFromStop = false) {
+  // Clear all timeouts and intervals
+  if (countdownTimeout) {
+    clearTimeout(countdownTimeout);
+    countdownTimeout = null;
+  }
+  if (timerInterval) {
+    clearInterval(timerInterval);
+    timerInterval = null;
+  }
+  
+  // Reset state variables
+  isCountdownActive = false;
+  startTime = null;
+  
+  // Clean up media resources
+  if (mediaRecorder && !isFromStop) {
+    try {
+      if (mediaRecorder.state !== 'inactive') {
+        mediaRecorder.stop();
+      }
+    } catch (error) {
+      console.warn('Error stopping mediaRecorder:', error);
     }
-    
-    if (elements.preview?.srcObject) {
-      const tracks = elements.preview.srcObject.getTracks();
-      tracks.forEach(track => {
+    mediaRecorder = null;
+  }
+  
+  // Clean up preview stream
+  if (elements.preview?.srcObject) {
+    try {
+      elements.preview.srcObject.getTracks().forEach(track => {
         track.stop();
-        elements.preview.srcObject.removeTrack(track);
       });
       elements.preview.srcObject = null;
+    } catch (error) {
+      console.warn('Error cleaning up preview:', error);
     }
-    
-    if (elements.player?.src) {
-      URL.revokeObjectURL(elements.player.src);
-      elements.player.removeAttribute('src');
-      elements.player.load();
-    }
-    
-    recordedChunks = [];
+  }
+  
+  // Clear recorded data
+  recordedChunks = [];
+  if (recordedBlob) {
     recordedBlob = null;
-    resetTimer();
-    
-    if (elements.preview) {
-      elements.preview.style.display = 'block';
-    }
-    if (elements.playerContainer) {
-      elements.playerContainer.style.display = 'none';
-    }
-    if (elements.downloadBtn) {
-      elements.downloadBtn.disabled = true;
-    }
-  } catch (error) {
-    console.error('Cleanup error:', error);
+  }
+  
+  // Clean up player URL
+  if (elements.player?.src) {
+    URL.revokeObjectURL(elements.player.src);
+    elements.player.removeAttribute('src');
+    elements.player.load();
   }
 }
 
@@ -885,32 +897,32 @@ document.addEventListener('DOMContentLoaded', async () => {
 });
 
 class RecorderError extends Error {
-  constructor(message, type = 'general') {
+  constructor(message, code, details = {}) {
     super(message);
     this.name = 'RecorderError';
-    this.type = type;
+    this.code = code;
+    this.details = details;
   }
 }
 
-async function handleRecordingError(error) {
-  // Clean up recording state
-  await cleanup();
+async function handleRecorderError(error) {
+  console.error('Recording error:', error);
   
+  let userMessage = 'An error occurred while recording';
   if (error instanceof RecorderError) {
-    switch(error.type) {
-      case 'permission':
-        updateStatus('error', 'Permission denied - please allow screen sharing');
+    switch(error.code) {
+      case 'PERMISSION_DENIED':
+        userMessage = 'Permission denied - please allow screen sharing';
         break;
-      case 'protocol':
-        updateStatus('error', 'Connection error - please try again');
+      case 'INVALID_STATE':
+        userMessage = 'Recording is in an invalid state';
         break;
-      default:
-        updateStatus('error', 'Recording failed - please try again');
+      // Add other specific cases
     }
-  } else {
-    updateStatus('error', 'An unexpected error occurred');
   }
   
+  updateStatus('error', userMessage);
+  await cleanup();
   resetUIState();
 }
 
@@ -927,22 +939,18 @@ function setupErrorRecovery() {
 // Replace updateRecordingsList function with this safer version
 function updateRecordingsList(recordings) {
   const recordingsList = document.getElementById('recordingsList');
-  
-  // Clear existing content safely
   while (recordingsList.firstChild) {
     recordingsList.removeChild(recordingsList.firstChild);
   }
-
-  if (!recordings || recordings.length === 0) {
+  
+  if (!recordings?.length) {
     const emptyItem = document.createElement('div');
     emptyItem.className = 'recording-item';
     emptyItem.style.justifyContent = 'center';
-    
-    const emptySpan = document.createElement('span');
-    emptySpan.className = 'recording-meta';
-    emptySpan.textContent = 'No recordings found';
-    
-    emptyItem.appendChild(emptySpan);
+    const emptyText = document.createElement('span');
+    emptyText.className = 'recording-meta';
+    emptyText.textContent = 'No recordings found';
+    emptyItem.appendChild(emptyText);
     recordingsList.appendChild(emptyItem);
     return;
   }
@@ -1091,3 +1099,32 @@ const additionalStyles = `
 const styleSheet = document.createElement('style');
 styleSheet.textContent = additionalStyles;
 document.head.appendChild(styleSheet);
+
+const RecorderState = {
+  state: {
+    isRecording: false,
+    isPaused: false,
+    currentBlob: null,
+    settings: {
+      resolution: '1920x1080',
+      codec: 'vp8',
+      delay: 0
+    }
+  },
+  
+  listeners: new Set(),
+  
+  update(changes) {
+    Object.assign(this.state, changes);
+    this.notify();
+  },
+  
+  subscribe(listener) {
+    this.listeners.add(listener);
+    return () => this.listeners.delete(listener);
+  },
+  
+  notify() {
+    this.listeners.forEach(listener => listener(this.state));
+  }
+};
